@@ -52,13 +52,20 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				// User management
 				admin.POST("/users", adminHandler.CreateUser)
 				admin.GET("/users", adminHandler.ListUsers)
+				admin.POST("/users/:user_id/update", adminHandler.UpdateUser)
+				admin.POST("/users/:user_id/delete", adminHandler.DeleteUser)
+
+				// Invite code management
 				admin.POST("/invite-codes", adminHandler.GenerateInviteCode)
 				admin.GET("/invite-codes", adminHandler.ListInviteCodes)
+				admin.POST("/invite-codes/:invite_code/delete", adminHandler.DeleteInviteCode)
 
 				// App management
 				admin.GET("/apps", adminHandler.ListApps)
 				admin.POST("/apps", adminHandler.CreateApp)
-				admin.PUT("/apps/:app_id", adminHandler.UpdateApp)
+				admin.POST("/apps/:app_id/update", adminHandler.UpdateApp)
+				admin.POST("/apps/:app_id/delete", adminHandler.DeleteApp)
+				admin.POST("/apps/:app_id/toggle", adminHandler.ToggleAppStatus)
 
 				// Audit logs
 				admin.GET("/logs", adminHandler.ViewAuditLogs)

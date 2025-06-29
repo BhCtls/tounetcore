@@ -179,6 +179,29 @@ GET /api/v1/admin/users?page=1&size=10
 Authorization: Bearer <admin_jwt_token>
 ```
 
+#### Update User
+```http
+POST /api/v1/admin/users/{user_id}/update
+Authorization: Bearer <admin_jwt_token>
+Content-Type: application/json
+
+{
+  "username": "updated_username",
+  "password": "new_password",
+  "status": "user",
+  "phone": "13900139000",
+  "pushdeer_token": "NEW_PUSHDEER_TOKEN"
+}
+```
+
+#### Delete User
+```http
+POST /api/v1/admin/users/{user_id}/delete
+Authorization: Bearer <admin_jwt_token>
+```
+Authorization: Bearer <admin_jwt_token>
+```
+
 #### Create Application
 ```http
 POST /api/v1/admin/apps
@@ -194,9 +217,47 @@ Content-Type: application/json
 }
 ```
 
+#### Update Application
+```http
+POST /api/v1/admin/apps/{app_id}/update
+Authorization: Bearer <admin_jwt_token>
+Content-Type: application/json
+
+{
+  "name": "Updated Application Name",
+  "description": "Updated description",
+  "required_permission_level": "admin",
+  "is_active": true
+}
+```
+
+#### Toggle Application Status
+```http
+POST /api/v1/admin/apps/{app_id}/toggle
+Authorization: Bearer <admin_jwt_token>
+```
+
+#### Delete Application
+```http
+POST /api/v1/admin/apps/{app_id}/delete
+Authorization: Bearer <admin_jwt_token>
+```
+
 #### Generate Invite Code
 ```http
 POST /api/v1/admin/invite-codes
+Authorization: Bearer <admin_jwt_token>
+```
+
+#### List Invite Codes
+```http
+GET /api/v1/admin/invite-codes?page=1&size=20
+Authorization: Bearer <admin_jwt_token>
+```
+
+#### Delete Invite Code
+```http
+POST /api/v1/admin/invite-codes/{invite_code}/delete
 Authorization: Bearer <admin_jwt_token>
 ```
 

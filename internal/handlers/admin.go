@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -46,6 +47,15 @@ type UpdateAppRequest struct {
 	SecretKey               string            `json:"secret_key"`
 	RequiredPermissionLevel models.UserStatus `json:"required_permission_level"`
 	IsActive                *bool             `json:"is_active"`
+}
+
+// AdminUpdateUserRequest represents admin user update request
+type AdminUpdateUserRequest struct {
+	Username      string            `json:"username"`
+	Password      string            `json:"password"`
+	Status        models.UserStatus `json:"status"`
+	Phone         string            `json:"phone"`
+	PushDeerToken string            `json:"pushdeer_token"`
 }
 
 // CreateUser creates a new user (admin only)
@@ -300,6 +310,101 @@ func (h *AdminHandler) UpdateApp(c *gin.Context) {
 	})
 }
 
+// DeleteApp deletes an application (admin only)
+func (h *AdminHandler) DeleteApp(c *gin.Context) {
+	appID := c.Param("app_id")
+	operatorID, _ := c.Get("user_id")
+
+	var app models.App
+	if err := h.db.Where("app_id = ?", appID).First(&app).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "app not found",
+		})
+		return
+	}
+
+	// Delete related records first
+	h.db.Where("app_id = ?", appID).Delete(&models.UserAllowedApp{})
+
+	// Delete the app
+	if err := h.db.Delete(&app).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to delete app",
+		})
+		return
+	}
+
+	// Create audit log
+	auditLog := models.AuditLog{
+		ActionType: "DELETE_APP",
+		TargetType: "APP",
+		TargetID:   appID,
+		OperatorID: operatorID.(uint),
+		IPAddress:  c.ClientIP(),
+		UserAgent:  c.GetHeader("User-Agent"),
+		Details:    fmt.Sprintf("Deleted app: %s", app.Name),
+	}
+	h.db.Create(&auditLog)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+	})
+}
+
+// ToggleAppStatus toggles application active status (admin only)
+func (h *AdminHandler) ToggleAppStatus(c *gin.Context) {
+	appID := c.Param("app_id")
+	operatorID, _ := c.Get("user_id")
+
+	var app models.App
+	if err := h.db.Where("app_id = ?", appID).First(&app).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "app not found",
+		})
+		return
+	}
+
+	// Toggle the status
+	app.IsActive = !app.IsActive
+
+	if err := h.db.Save(&app).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to update app status",
+		})
+		return
+	}
+
+	// Create audit log
+	status := "DISABLED"
+	if app.IsActive {
+		status = "ENABLED"
+	}
+	auditLog := models.AuditLog{
+		ActionType: "TOGGLE_APP_STATUS",
+		TargetType: "APP",
+		TargetID:   appID,
+		OperatorID: operatorID.(uint),
+		IPAddress:  c.ClientIP(),
+		UserAgent:  c.GetHeader("User-Agent"),
+		Details:    fmt.Sprintf("App %s status changed to: %s", app.Name, status),
+	}
+	h.db.Create(&auditLog)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"app_id":    app.AppID,
+			"is_active": app.IsActive,
+		},
+	})
+}
+
 // GenerateInviteCode generates a new invite code
 func (h *AdminHandler) GenerateInviteCode(c *gin.Context) {
 	code, err := auth.GenerateInviteCode()
@@ -430,5 +535,174 @@ func (h *AdminHandler) ListInviteCodes(c *gin.Context) {
 			"total":        total,
 			"invite_codes": codeList,
 		},
+	})
+}
+
+// UpdateUser updates user information (admin only)
+func (h *AdminHandler) UpdateUser(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	var req AdminUpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "invalid request data",
+		})
+		return
+	}
+
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "user not found",
+		})
+		return
+	}
+
+	// Update fields if provided
+	if req.Username != "" {
+		// Check if new username already exists
+		var existingUser models.User
+		if err := h.db.Where("username = ? AND id != ?", req.Username, userID).First(&existingUser).Error; err == nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"code":    409,
+				"message": "username already exists",
+			})
+			return
+		}
+		user.Username = req.Username
+	}
+	if req.Password != "" {
+		hashedPassword, err := auth.HashPassword(req.Password)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    500,
+				"message": "failed to hash password",
+			})
+			return
+		}
+		user.PasswordHash = hashedPassword
+	}
+	if req.Status != "" {
+		user.Status = req.Status
+	}
+	if req.Phone != "" {
+		user.Phone = req.Phone
+	}
+	if req.PushDeerToken != "" {
+		user.PushDeerToken = req.PushDeerToken
+	}
+
+	if err := h.db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to update user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+	})
+}
+
+// DeleteUser deletes a user (admin only)
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	userID := c.Param("user_id")
+	operatorID, _ := c.Get("user_id")
+
+	// Prevent admin from deleting themselves
+	if userID == fmt.Sprintf("%v", operatorID) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "cannot delete your own account",
+		})
+		return
+	}
+
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "user not found",
+		})
+		return
+	}
+
+	// Use soft delete
+	if err := h.db.Delete(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to delete user",
+		})
+		return
+	}
+
+	// Create audit log
+	auditLog := models.AuditLog{
+		ActionType: "DELETE_USER",
+		TargetType: "USER",
+		TargetID:   userID,
+		OperatorID: operatorID.(uint),
+		IPAddress:  c.ClientIP(),
+		UserAgent:  c.GetHeader("User-Agent"),
+		Details:    fmt.Sprintf("Deleted user: %s", user.Username),
+	}
+	h.db.Create(&auditLog)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+	})
+}
+
+// DeleteInviteCode deletes an invite code (admin only)
+func (h *AdminHandler) DeleteInviteCode(c *gin.Context) {
+	inviteCode := c.Param("invite_code")
+	operatorID, _ := c.Get("user_id")
+
+	var code models.InviteCode
+	if err := h.db.Where("code = ?", inviteCode).First(&code).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "invite code not found",
+		})
+		return
+	}
+
+	// Check if code has been used
+	if code.CodeUserID != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "cannot delete used invite code",
+		})
+		return
+	}
+
+	if err := h.db.Delete(&code).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to delete invite code",
+		})
+		return
+	}
+
+	// Create audit log
+	auditLog := models.AuditLog{
+		ActionType: "DELETE_INVITE_CODE",
+		TargetType: "INVITE_CODE",
+		TargetID:   inviteCode,
+		OperatorID: operatorID.(uint),
+		IPAddress:  c.ClientIP(),
+		UserAgent:  c.GetHeader("User-Agent"),
+		Details:    fmt.Sprintf("Deleted invite code: %s", inviteCode),
+	}
+	h.db.Create(&auditLog)
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
 	})
 }
