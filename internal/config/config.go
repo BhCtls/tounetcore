@@ -24,7 +24,7 @@ func LoadConfig() *Config {
 		JWTExpiration:  getDurationEnv("JWT_EXPIRATION", 24*time.Hour),
 		NKeyExpiration: getDurationEnv("NKEY_EXPIRATION", 15*time.Minute),
 		PushDeerAPI:    getEnv("PUSHDEER_API", "https://api2.pushdeer.com/message/push"),
-		ServerPort:     getEnv("PORT", "8080"),
+		ServerPort:     getEnv("PORT", "44544"),
 	}
 }
 

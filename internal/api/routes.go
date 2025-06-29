@@ -53,6 +53,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				admin.POST("/users", adminHandler.CreateUser)
 				admin.GET("/users", adminHandler.ListUsers)
 				admin.POST("/invite-codes", adminHandler.GenerateInviteCode)
+				admin.GET("/invite-codes", adminHandler.ListInviteCodes)
 
 				// App management
 				admin.GET("/apps", adminHandler.ListApps)

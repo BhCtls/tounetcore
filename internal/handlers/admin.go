@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 	"tounetcore/internal/auth"
 	"tounetcore/internal/config"
 	"tounetcore/internal/models"
@@ -312,6 +313,7 @@ func (h *AdminHandler) GenerateInviteCode(c *gin.Context) {
 
 	inviteCode := models.InviteCode{
 		Code: code,
+		Time: time.Now(),
 	}
 
 	if err := h.db.Create(&inviteCode).Error; err != nil {
@@ -366,6 +368,67 @@ func (h *AdminHandler) ViewAuditLogs(c *gin.Context) {
 		"data": gin.H{
 			"total": total,
 			"logs":  logs,
+		},
+	})
+}
+
+// ListInviteCodes returns all invite codes with pagination
+func (h *AdminHandler) ListInviteCodes(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+
+	offset := (page - 1) * size
+
+	var inviteCodes []models.InviteCode
+	var total int64
+
+	// Get total count
+	h.db.Model(&models.InviteCode{}).Count(&total)
+
+	// Get invite codes with pagination, ordered by creation time desc
+	if err := h.db.Preload("User").Offset(offset).Limit(size).Order("time DESC").Find(&inviteCodes).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to fetch invite codes",
+		})
+		return
+	}
+
+	// Build response
+	var codeList []gin.H
+	for _, inviteCode := range inviteCodes {
+		codeData := gin.H{
+			"code":         inviteCode.Code,
+			"time":         inviteCode.Time,
+			"code_user_id": inviteCode.CodeUserID,
+			"used_at":      inviteCode.UsedAt,
+			"used_by":      nil,
+		}
+
+		// Add user information if the code has been used
+		if inviteCode.User != nil {
+			codeData["used_by"] = gin.H{
+				"id":       inviteCode.User.ID,
+				"username": inviteCode.User.Username,
+			}
+		}
+
+		codeList = append(codeList, codeData)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"total":        total,
+			"invite_codes": codeList,
 		},
 	})
 }

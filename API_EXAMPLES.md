@@ -9,7 +9,7 @@ Start the server:
 go run cmd/server/main.go
 ```
 
-The server runs on port 8080 by default. If that port is busy, use:
+The server runs on port 44544 by default. If that port is busy, use:
 ```bash
 PORT=8081 go run cmd/server/main.go
 ```
@@ -18,7 +18,7 @@ PORT=8081 go run cmd/server/main.go
 
 ### 1. Admin Login
 ```bash
-curl -X POST http://localhost:8081/api/v1/login \
+curl -X POST http://localhost:44544/api/v1/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
@@ -39,7 +39,7 @@ Response:
 
 ### 2. User Registration
 ```bash
-curl -X POST http://localhost:8081/api/v1/register \
+curl -X POST http://localhost:44544/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{
     "username": "testuser",
@@ -54,19 +54,19 @@ curl -X POST http://localhost:8081/api/v1/register \
 
 ### 3. Get User Info
 ```bash
-curl -X GET http://localhost:8081/api/v1/user/me \
+curl -X GET http://localhost:44544/api/v1/user/me \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ### 4. Get User Apps
 ```bash
-curl -X GET http://localhost:8081/api/v1/user/apps \
+curl -X GET http://localhost:44544/api/v1/user/apps \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ### 5. Generate NKey
 ```bash
-curl -X POST http://localhost:8081/api/v1/nkey/generate \
+curl -X POST http://localhost:44544/api/v1/nkey/generate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
@@ -77,7 +77,7 @@ curl -X POST http://localhost:8081/api/v1/nkey/generate \
 
 ### 6. Validate NKey
 ```bash
-curl -X POST http://localhost:8081/api/v1/nkey/validate \
+curl -X POST http://localhost:44544/api/v1/nkey/validate \
   -H "Content-Type: application/json" \
   -d '{
     "nkey": "TOUNET_1_XXXXXX",
@@ -89,19 +89,25 @@ curl -X POST http://localhost:8081/api/v1/nkey/validate \
 
 ### 7. List Users (Admin)
 ```bash
-curl -X GET http://localhost:8081/api/v1/admin/users?page=1&size=10 \
+curl -X GET http://localhost:44544/api/v1/admin/users?page=1&size=10 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
-### 8. List Apps (Admin)
+### 8. List Invite Codes (Admin)
 ```bash
-curl -X GET http://localhost:8081/api/v1/admin/apps \
+curl -X GET http://localhost:44544/api/v1/admin/invite-codes?page=1&size=20 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
-### 9. Create App (Admin)
+### 9. List Apps (Admin)
 ```bash
-curl -X POST http://localhost:8081/api/v1/admin/apps \
+curl -X GET http://localhost:44544/api/v1/admin/apps \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
+```
+
+### 10. Create App (Admin)
+```bash
+curl -X POST http://localhost:44544/api/v1/admin/apps \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
   -d '{
@@ -113,9 +119,9 @@ curl -X POST http://localhost:8081/api/v1/admin/apps \
   }'
 ```
 
-### 10. Generate Invite Code (Admin)
+### 11. Generate Invite Code (Admin)
 ```bash
-curl -X POST http://localhost:8081/api/v1/admin/invite-codes \
+curl -X POST http://localhost:44544/api/v1/admin/invite-codes \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
 ```
 
