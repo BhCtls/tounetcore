@@ -1,0 +1,371 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+	"tounetcore/internal/auth"
+	"tounetcore/internal/config"
+	"tounetcore/internal/models"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type AdminHandler struct {
+	db  *gorm.DB
+	cfg *config.Config
+}
+
+func NewAdminHandler(db *gorm.DB, cfg *config.Config) *AdminHandler {
+	return &AdminHandler{db: db, cfg: cfg}
+}
+
+// CreateUserRequest represents admin user creation request
+type CreateUserRequest struct {
+	Username      string            `json:"username" binding:"required"`
+	Password      string            `json:"password" binding:"required"`
+	Status        models.UserStatus `json:"status"`
+	Phone         string            `json:"phone"`
+	PushDeerToken string            `json:"pushdeer_token"`
+}
+
+// CreateAppRequest represents app creation request
+type CreateAppRequest struct {
+	AppID                   string            `json:"app_id" binding:"required"`
+	Name                    string            `json:"name" binding:"required"`
+	Description             string            `json:"description"`
+	RequiredPermissionLevel models.UserStatus `json:"required_permission_level"`
+	IsActive                bool              `json:"is_active"`
+}
+
+// UpdateAppRequest represents app update request
+type UpdateAppRequest struct {
+	Name                    string            `json:"name"`
+	Description             string            `json:"description"`
+	SecretKey               string            `json:"secret_key"`
+	RequiredPermissionLevel models.UserStatus `json:"required_permission_level"`
+	IsActive                *bool             `json:"is_active"`
+}
+
+// CreateUser creates a new user (admin only)
+func (h *AdminHandler) CreateUser(c *gin.Context) {
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "invalid request data",
+		})
+		return
+	}
+
+	// Check if username already exists
+	var existingUser models.User
+	if err := h.db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"code":    409,
+			"message": "username already exists",
+		})
+		return
+	}
+
+	// Hash password
+	hashedPassword, err := auth.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to hash password",
+		})
+		return
+	}
+
+	// Set default status if not provided
+	if req.Status == "" {
+		req.Status = models.StatusUser
+	}
+
+	// Create user
+	user := models.User{
+		Username:      req.Username,
+		PasswordHash:  hashedPassword,
+		Phone:         req.Phone,
+		PushDeerToken: req.PushDeerToken,
+		Status:        req.Status,
+	}
+
+	if err := h.db.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to create user",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"user_id": user.ID,
+		},
+	})
+}
+
+// ListUsers returns all users with pagination
+func (h *AdminHandler) ListUsers(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 10
+	}
+
+	offset := (page - 1) * size
+
+	var users []models.User
+	var total int64
+
+	// Get total count
+	h.db.Model(&models.User{}).Count(&total)
+
+	// Get users with pagination
+	if err := h.db.Offset(offset).Limit(size).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to fetch users",
+		})
+		return
+	}
+
+	// Build response
+	var userList []gin.H
+	for _, user := range users {
+		userList = append(userList, gin.H{
+			"id":         user.ID,
+			"username":   user.Username,
+			"status":     user.Status,
+			"phone":      user.Phone,
+			"created_at": user.CreatedAt,
+			"last_login": user.LastLogin,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"total": total,
+			"users": userList,
+		},
+	})
+}
+
+// ListApps returns all applications
+func (h *AdminHandler) ListApps(c *gin.Context) {
+	var apps []models.App
+	if err := h.db.Find(&apps).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to fetch apps",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    apps,
+	})
+}
+
+// CreateApp creates a new application
+func (h *AdminHandler) CreateApp(c *gin.Context) {
+	var req CreateAppRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "invalid request data",
+		})
+		return
+	}
+
+	// Check if app_id already exists
+	var existingApp models.App
+	if err := h.db.Where("app_id = ?", req.AppID).First(&existingApp).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"code":    409,
+			"message": "app_id already exists",
+		})
+		return
+	}
+
+	// Generate secret key
+	secretKey, err := auth.GenerateSecretKey()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to generate secret key",
+		})
+		return
+	}
+
+	// Set defaults
+	if req.RequiredPermissionLevel == "" {
+		req.RequiredPermissionLevel = models.StatusUser
+	}
+
+	// Create app
+	app := models.App{
+		AppID:                   req.AppID,
+		SecretKey:               secretKey,
+		Name:                    req.Name,
+		Description:             req.Description,
+		RequiredPermissionLevel: req.RequiredPermissionLevel,
+		IsActive:                req.IsActive,
+	}
+
+	if err := h.db.Create(&app).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to create app",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"app_id":                    app.AppID,
+			"name":                      app.Name,
+			"secret_key":                app.SecretKey,
+			"required_permission_level": app.RequiredPermissionLevel,
+			"is_active":                 app.IsActive,
+		},
+	})
+}
+
+// UpdateApp updates an existing application
+func (h *AdminHandler) UpdateApp(c *gin.Context) {
+	appID := c.Param("app_id")
+
+	var req UpdateAppRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "invalid request data",
+		})
+		return
+	}
+
+	var app models.App
+	if err := h.db.Where("app_id = ?", appID).First(&app).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"code":    404,
+			"message": "app not found",
+		})
+		return
+	}
+
+	// Update fields if provided
+	if req.Name != "" {
+		app.Name = req.Name
+	}
+	if req.Description != "" {
+		app.Description = req.Description
+	}
+	if req.SecretKey != "" {
+		app.SecretKey = req.SecretKey
+	}
+	if req.RequiredPermissionLevel != "" {
+		app.RequiredPermissionLevel = req.RequiredPermissionLevel
+	}
+	if req.IsActive != nil {
+		app.IsActive = *req.IsActive
+	}
+
+	if err := h.db.Save(&app).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to update app",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+	})
+}
+
+// GenerateInviteCode generates a new invite code
+func (h *AdminHandler) GenerateInviteCode(c *gin.Context) {
+	code, err := auth.GenerateInviteCode()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to generate invite code",
+		})
+		return
+	}
+
+	inviteCode := models.InviteCode{
+		Code: code,
+	}
+
+	if err := h.db.Create(&inviteCode).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to create invite code",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"invite_code": code,
+		},
+	})
+}
+
+// ViewAuditLogs returns audit logs with pagination
+func (h *AdminHandler) ViewAuditLogs(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(c.DefaultQuery("size", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+
+	offset := (page - 1) * size
+
+	var logs []models.AuditLog
+	var total int64
+
+	// Get total count
+	h.db.Model(&models.AuditLog{}).Count(&total)
+
+	// Get logs with pagination, ordered by creation time desc
+	if err := h.db.Preload("Operator").Offset(offset).Limit(size).Order("created_at DESC").Find(&logs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "failed to fetch audit logs",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data": gin.H{
+			"total": total,
+			"logs":  logs,
+		},
+	})
+}
