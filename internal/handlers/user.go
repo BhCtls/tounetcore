@@ -264,6 +264,8 @@ func (h *UserHandler) ListAllowedApps(c *gin.Context) {
 	switch userStatus {
 	case models.StatusAdmin:
 		// Admin can see all apps
+	case models.StatusTrusted:
+		query = query.Where("required_permission_level IN (?)", []models.UserStatus{models.StatusDisabledUser, models.StatusUser, models.StatusTrusted})
 	case models.StatusUser:
 		query = query.Where("required_permission_level IN (?)", []models.UserStatus{models.StatusDisabledUser, models.StatusUser})
 	case models.StatusDisabledUser:

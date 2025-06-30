@@ -89,10 +89,8 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// Set default status if not provided
-	if req.Status == "" {
-		req.Status = models.StatusUser
-	}
+	// Force default status to user for security - admin/trusted status must be set via update
+	req.Status = models.StatusUser
 
 	// Create user
 	user := models.User{
@@ -585,6 +583,17 @@ func (h *AdminHandler) UpdateUser(c *gin.Context) {
 		user.PasswordHash = hashedPassword
 	}
 	if req.Status != "" {
+		operatorID, _ := c.Get("user_id")
+
+		// Prevent admin from demoting themselves
+		if userID == fmt.Sprintf("%v", operatorID) && user.Status == models.StatusAdmin && req.Status != models.StatusAdmin {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    400,
+				"message": "cannot demote your own admin privileges",
+			})
+			return
+		}
+
 		user.Status = req.Status
 	}
 	if req.Phone != "" {

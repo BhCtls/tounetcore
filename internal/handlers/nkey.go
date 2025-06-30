@@ -203,18 +203,9 @@ func (h *NKeyHandler) ValidateNKey(c *gin.Context) {
 
 // userHasAppPermission checks if a user has permission for a specific app
 func (h *NKeyHandler) userHasAppPermission(userID uint, appID string, userStatus models.UserStatus, requiredLevel models.UserStatus) bool {
-	// Check basic permission level
-	switch requiredLevel {
-	case models.StatusAdmin:
-		if userStatus != models.StatusAdmin {
-			return false
-		}
-	case models.StatusUser:
-		if userStatus == models.StatusDisabledUser {
-			return false
-		}
-	case models.StatusDisabledUser:
-		// All users can access disabled user level apps
+	// Check basic permission level using the new hierarchy
+	if !userStatus.HasPermission(requiredLevel) {
+		return false
 	}
 
 	// Check user-specific app permissions

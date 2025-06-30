@@ -78,6 +78,60 @@ func AdminMiddleware() gin.HandlerFunc {
 	}
 }
 
+// TrustedMiddleware ensures only trusted or admin users can access the endpoint
+func TrustedMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userStatus, exists := c.Get("user_status")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    401,
+				"message": "user status not found",
+			})
+			c.Abort()
+			return
+		}
+
+		status := userStatus.(models.UserStatus)
+		if !status.HasPermission(models.StatusTrusted) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"code":    403,
+				"message": "trusted access required",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequirePermissionMiddleware creates a middleware that requires a specific permission level
+func RequirePermissionMiddleware(requiredLevel models.UserStatus) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userStatus, exists := c.Get("user_status")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code":    401,
+				"message": "user status not found",
+			})
+			c.Abort()
+			return
+		}
+
+		status := userStatus.(models.UserStatus)
+		if !status.HasPermission(requiredLevel) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"code":    403,
+				"message": "insufficient permissions",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
 // CORSMiddleware handles cross-origin requests
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

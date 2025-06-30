@@ -29,9 +29,32 @@ type UserStatus string
 
 const (
 	StatusAdmin        UserStatus = "admin"
+	StatusTrusted      UserStatus = "trusted"
 	StatusUser         UserStatus = "user"
 	StatusDisabledUser UserStatus = "disableduser"
 )
+
+// GetPermissionLevel returns the numeric permission level for comparison
+// Higher numbers indicate higher permissions
+func (us UserStatus) GetPermissionLevel() int {
+	switch us {
+	case StatusAdmin:
+		return 4
+	case StatusTrusted:
+		return 3
+	case StatusUser:
+		return 2
+	case StatusDisabledUser:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// HasPermission checks if the current user status has permission for the required level
+func (us UserStatus) HasPermission(required UserStatus) bool {
+	return us.GetPermissionLevel() >= required.GetPermissionLevel()
+}
 
 // InviteCode represents an invitation code
 type InviteCode struct {

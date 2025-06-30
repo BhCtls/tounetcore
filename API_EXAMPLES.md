@@ -2,6 +2,15 @@
 
 This directory contains example API requests for testing the TouNetCore system.
 
+## User Permission Levels
+
+The system uses a hierarchical permission system with the following levels (from highest to lowest):
+
+- **admin**: Full system access, can manage users, apps, and system settings
+- **trusted**: Enhanced user with access to trusted applications and features
+- **user**: Standard user access to basic applications
+- **disableduser**: Minimal access, can only use applications specifically marked for disabled users
+
 ## Setup
 
 Start the server:
@@ -187,7 +196,46 @@ Response (Invalid/Expired):
 
 ## Admin Operations
 
-### 7. List Users (Admin)
+### 7. Create User (Admin)
+```bash
+curl -X POST http://localhost:44544/api/v1/admin/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -d '{
+    "username": "newuser",
+    "password": "password123",
+    "status": "user",
+    "phone": "13800138000",
+    "pushdeer_token": "PUSHDEER_TOKEN_HERE"
+  }'
+```
+
+**Creating a trusted user:**
+```bash
+curl -X POST http://localhost:44544/api/v1/admin/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN" \
+  -d '{
+    "username": "trusteduser",
+    "password": "password123",
+    "status": "trusted",
+    "phone": "13800138001",
+    "pushdeer_token": "PUSHDEER_TOKEN_HERE"
+  }'
+```
+
+Response:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "user_id": 3
+  }
+}
+```
+
+### 8. List Users (Admin)
 ```bash
 curl -X GET http://localhost:44544/api/v1/admin/users?page=1&size=10 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -224,7 +272,7 @@ Response:
 }
 ```
 
-### 8. List Invite Codes (Admin)
+### 9. List Invite Codes (Admin)
 ```bash
 curl -X GET http://localhost:44544/api/v1/admin/invite-codes?page=1&size=20 \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -261,7 +309,7 @@ Response:
 }
 ```
 
-### 9. Update User (Admin)
+### 10. Update User (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/users/1/update \
   -H "Content-Type: application/json" \
@@ -288,7 +336,7 @@ Response:
 }
 ```
 
-### 10. Delete User (Admin)
+### 11. Delete User (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/users/1/delete \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -305,7 +353,7 @@ Response:
 }
 ```
 
-### 11. List Apps (Admin)
+### 12. List Apps (Admin)
 ```bash
 curl -X GET http://localhost:44544/api/v1/admin/apps \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -341,7 +389,7 @@ Response:
 }
 ```
 
-### 12. Create App (Admin)
+### 13. Create App (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/apps \
   -H "Content-Type: application/json" \
@@ -372,7 +420,7 @@ Response:
 }
 ```
 
-### 13. Update App (Admin)
+### 14. Update App (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/apps/NewApp/update \
   -H "Content-Type: application/json" \
@@ -399,7 +447,7 @@ Response:
 }
 ```
 
-### 14. Toggle App Status (Admin)
+### 15. Toggle App Status (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/apps/NewApp/toggle \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -418,7 +466,7 @@ Response:
 }
 ```
 
-### 15. Delete App (Admin)
+### 16. Delete App (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/apps/NewApp/delete \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -435,7 +483,7 @@ Response:
 }
 ```
 
-### 16. Generate Invite Code (Admin)
+### 17. Generate Invite Code (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/invite-codes \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"
@@ -455,7 +503,7 @@ Response:
 }
 ```
 
-### 17. Delete Invite Code (Admin)
+### 18. Delete Invite Code (Admin)
 ```bash
 curl -X POST http://localhost:44544/api/v1/admin/invite-codes/METzuzFY8KSudQOnvpS-Qw/delete \
   -H "Authorization: Bearer YOUR_ADMIN_JWT_TOKEN"

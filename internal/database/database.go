@@ -90,6 +90,13 @@ func SeedData(db *gorm.DB) error {
 			IsActive:                true,
 		},
 		{
+			AppID:                   "advanced_analytics",
+			Name:                    "Advanced Analytics",
+			Description:             "Advanced analytics and reporting tools",
+			RequiredPermissionLevel: models.StatusTrusted,
+			IsActive:                true,
+		},
+		{
 			AppID:                   "livecontent_admin",
 			Name:                    "Live Content Admin",
 			Description:             "Administrative live content access",
