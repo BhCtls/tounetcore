@@ -60,3 +60,6 @@ temp/
 # Coverage files
 coverage.txt
 coverage.html
+
+# Documentation files
+docs/

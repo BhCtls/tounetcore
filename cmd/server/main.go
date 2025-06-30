@@ -43,8 +43,10 @@ func main() {
 		port = "44544"
 	}
 
-	log.Printf("Server starting on port %s", port)
-	if err := router.Run(":" + port); err != nil {
+	// Listen on all interfaces (0.0.0.0)
+	address := "0.0.0.0:" + port
+	log.Printf("Server starting on %s", address)
+	if err := router.Run(address); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
