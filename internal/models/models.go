@@ -89,6 +89,7 @@ type App struct {
 	SecretKey               string     `gorm:"not null" json:"-"` // Encrypted secret key
 	Name                    string     `gorm:"not null" json:"name"`
 	Description             string     `json:"description"`
+	URL                     string     `json:"url"` // Application URL
 	RequiredPermissionLevel UserStatus `gorm:"type:varchar(20);default:user" json:"required_permission_level"`
 	IsActive                bool       `gorm:"default:true" json:"is_active"`
 	CreatedAt               time.Time  `json:"created_at"`

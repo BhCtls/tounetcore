@@ -36,6 +36,7 @@ type CreateAppRequest struct {
 	AppID                   string            `json:"app_id" binding:"required"`
 	Name                    string            `json:"name" binding:"required"`
 	Description             string            `json:"description"`
+	URL                     string            `json:"url"`
 	RequiredPermissionLevel models.UserStatus `json:"required_permission_level"`
 	IsActive                bool              `json:"is_active"`
 }
@@ -44,6 +45,7 @@ type CreateAppRequest struct {
 type UpdateAppRequest struct {
 	Name                    string            `json:"name"`
 	Description             string            `json:"description"`
+	URL                     string            `json:"url"`
 	SecretKey               string            `json:"secret_key"`
 	RequiredPermissionLevel models.UserStatus `json:"required_permission_level"`
 	IsActive                *bool             `json:"is_active"`
@@ -230,6 +232,7 @@ func (h *AdminHandler) CreateApp(c *gin.Context) {
 		SecretKey:               secretKey,
 		Name:                    req.Name,
 		Description:             req.Description,
+		URL:                     req.URL,
 		RequiredPermissionLevel: req.RequiredPermissionLevel,
 		IsActive:                req.IsActive,
 	}
@@ -248,6 +251,7 @@ func (h *AdminHandler) CreateApp(c *gin.Context) {
 		"data": gin.H{
 			"app_id":                    app.AppID,
 			"name":                      app.Name,
+			"url":                       app.URL,
 			"secret_key":                app.SecretKey,
 			"required_permission_level": app.RequiredPermissionLevel,
 			"is_active":                 app.IsActive,
@@ -283,6 +287,9 @@ func (h *AdminHandler) UpdateApp(c *gin.Context) {
 	}
 	if req.Description != "" {
 		app.Description = req.Description
+	}
+	if req.URL != "" {
+		app.URL = req.URL
 	}
 	if req.SecretKey != "" {
 		app.SecretKey = req.SecretKey

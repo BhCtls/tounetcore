@@ -296,6 +296,7 @@ func (h *UserHandler) ListAllowedApps(c *gin.Context) {
 		appData := gin.H{
 			"app_id":      app.AppID,
 			"name":        app.Name,
+			"url":         app.URL,
 			"enabled":     true,
 			"valid_until": nil,
 		}
