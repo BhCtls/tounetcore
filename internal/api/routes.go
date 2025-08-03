@@ -64,7 +64,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				admin.GET("/apps", adminHandler.ListApps)
 				admin.POST("/apps", adminHandler.CreateApp)
 				admin.PUT("/apps/:app_id", adminHandler.UpdateApp)
+				admin.POST("/apps/:app_id/update", adminHandler.UpdateApp) // For consistency with user update pattern
 				admin.DELETE("/apps/:app_id", adminHandler.DeleteApp)
+				admin.POST("/apps/:app_id/delete", adminHandler.DeleteApp) // For consistency with other delete patterns
 				admin.POST("/apps/:app_id/toggle", adminHandler.ToggleAppStatus)
 
 				// Audit logs
